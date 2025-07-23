@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momenthum Snak</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Audiowide', sans-serif;
+            background-color: #0a0a15;
+            overflow: hidden;
+            user-select: none;
+        }
+        
+        .glow {
+            text-shadow: 0 0 10px #9d4dff, 0 0 20px #9d4dff, 0 0 30px #9d4dff;
+        }
+        
+        .snake-glow {
+            box-shadow: 0 0 10px #4dff9d, 0 0 20px #4dff9d;
+        }
+        
+        .food-glow {
+            box-shadow: 0 0 10px #ff4d9d, 0 0 20px #ff4d9d;
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        #gameCanvas {
+            border: 2px solid #4dff9d;
+            box-shadow: 0 0 20px rgba(77, 255, 157, 0.3);
+        }
+        
+        .btn-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(157, 77, 255, 0.7);
+        }
+        
+        .btn-active:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen text-white">
+    <div class="absolute top-0 left-0 w-full h-full bg-black opacity-50 z-0"></div>
+    
+    <!-- Game Container -->
+    <div class="relative z-10 w-full max-w-2xl px-4">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-4">
+            <div class="text-2xl glow text-purple-400">MOMENTHUM SNAK</div>
+            <div class="flex space-x-4">
+                <button id="soundBtn" class="text-cyan-400 hover:text-cyan-300 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M12 6a7.975 7.975 0 015.657 2.343m0 0a7.975 7.975 0 010 11.314m-11.314 0a7.975 7.975 0 010-11.314m0 0a7.975 7.975 0 015.657-2.343" />
+                    </svg>
+                </button>
+                <button id="focusBtn" class="text-green-400 hover:text-green-300 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Score Board -->
+        <div class="flex justify-between mb-2">
+            <div class="flex items-center space-x-2">
+                <span class="text-cyan-400">SCORE:</span>
+                <span id="score" class="text-2xl text-white">0</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="text-purple-400">BEST:</span>
+                <span id="bestScore" class="text-2xl text-white">0</span>
+            </div>
+        </div>
+        
+        <!-- Game Canvas -->
+        <div class="relative">
+            <canvas id="gameCanvas" class="w-full bg-black rounded-lg"></canvas>
+            
+            <!-- Start Screen -->
+            <div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 rounded-lg">
+                <h1 class="text-4xl md:text-5xl mb-6 glow text-purple-400">MOMENTHUM SNAK</h1>
+                <p class="text-lg mb-8 text-cyan-400">Use WASD or Arrow Keys to move</p>
+                <button id="startBtn" class="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-500 rounded-full text-xl font-bold btn-hover btn-active transition-all duration-200">
+                    START GAME
+                </button>
+            </div>
+            
+            <!-- Game Over Screen -->
+            <div id="gameOverScreen" class="absolute inset-0 hidden flex-col items-center justify-center bg-black bg-opacity-90 rounded-lg">
+                <h1 class="text-4xl md:text-5xl mb-4 text-red-400 glow">GAME OVER</h1>
+                <p class="text-2xl mb-2 text-cyan-400">Your Score: <span id="finalScore" class="text-white">0</span></p>
+                <p class="text-xl mb-6 text-purple-400">Best: <span id="finalBestScore" class="text-white">0</span></p>
+                <button id="restartBtn" class="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-500 rounded-full text-xl font-bold btn-hover btn-active transition-all duration-200">
+                    PLAY AGAIN
+                </button>
+            </div>
+        </div>
+        
+        <!-- Speed Level -->
+        <div class="mt-4 flex justify-center mb-2">
+            <div class="flex items-center space-x-4">
+                <span class="text-purple-400">SPEED:</span>
+                <div class="flex space-x-2">
+                    <button id="easyBtn" class="px-3 py-1 bg-gray-800 rounded-lg text-green-400 hover:bg-gray-700 transition border border-green-400">
+                        EASY
+                    </button>
+                    <button id="mediumBtn" class="px-3 py-1 bg-gray-800 rounded-lg text-yellow-400 hover:bg-gray-700 transition">
+                        MEDIUM
+                    </button>
+                    <button id="hardBtn" class="px-3 py-1 bg-gray-800 rounded-lg text-red-400 hover:bg-gray-700 transition">
+                        HARD
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="mt-2 flex justify-center">
+            <div class="grid grid-cols-3 gap-2">
+                <div></div>
+                <button id="upBtn" class="p-3 bg-gray-800 rounded-lg text-center text-green-400 hover:bg-gray-700 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                    </svg>
+                </button>
+                <div></div>
+                <button id="leftBtn" class="p-3 bg-gray-800 rounded-lg text-center text-purple-400 hover:bg-gray-700 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <button id="downBtn" class="p-3 bg-gray-800 rounded-lg text-center text-cyan-400 hover:bg-gray-700 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <button id="rightBtn" class="p-3 bg-gray-800 rounded-lg text-center text-purple-400 hover:bg-gray-700 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <audio id="eatSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" preload="auto"></audio>
+    <audio id="gameOverSound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3" preload="auto"></audio>
+    
+    <footer class="text-center text-gray-500 text-sm py-4 z-10">
+        © Sethios. Contact: +243 980 84 1182. Email: sethiosmomentum@gmail.com
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game elements
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const scoreElement = document.getElementById('score');
+            const bestScoreElement = document.getElementById('bestScore');
+            const startScreen = document.getElementById('startScreen');
+            const gameOverScreen = document.getElementById('gameOverScreen');
+            const finalScoreElement = document.getElementById('finalScore');
+            const finalBestScoreElement = document.getElementById('finalBestScore');
+            const startBtn = document.getElementById('startBtn');
+            const restartBtn = document.getElementById('restartBtn');
+            const soundBtn = document.getElementById('soundBtn');
+            const focusBtn = document.getElementById('focusBtn');
+            const upBtn = document.getElementById('upBtn');
+            const downBtn = document.getElementById('downBtn');
+            const leftBtn = document.getElementById('leftBtn');
+            const rightBtn = document.getElementById('rightBtn');
+            const easyBtn = document.getElementById('easyBtn');
+            const mediumBtn = document.getElementById('mediumBtn');
+            const hardBtn = document.getElementById('hardBtn');
+            const eatSound = document.getElementById('eatSound');
+            const gameOverSound = document.getElementById('gameOverSound');
+            
+            // Game settings
+            const gridSize = 20;
+            const speedLevels = {
+                easy: { initial: 200, increase: 3, max: 70 },
+                medium: { initial: 150, increase: 5, max: 50 },
+                hard: { initial: 100, increase: 8, max: 30 }
+            };
+            let currentSpeedLevel = 'medium';
+            let initialSpeed = speedLevels.medium.initial;
+            let speedIncrease = speedLevels.medium.increase;
+            let maxSpeed = speedLevels.medium.max;
+            
+            // Game state
+            let snake = [];
+            let food = {};
+            let direction = 'right';
+            let nextDirection = 'right';
+            let score = 0;
+            let bestScore = localStorage.getItem('bestScore') || 0;
+            let gameSpeed = initialSpeed;
+            let gameInterval;
+            let isPlaying = false;
+            let isSoundOn = true;
+            let isFocusMode = false;
+            
+            // Set canvas size
+            function resizeCanvas() {
+                const size = Math.min(window.innerWidth - 40, 600);
+                canvas.width = size;
+                canvas.height = size;
+                
+                // Make sure width and height are multiples of gridSize
+                canvas.width = Math.floor(canvas.width / gridSize) * gridSize;
+                canvas.height = Math.floor(canvas.height / gridSize) * gridSize;
+                
+                if (isPlaying) {
+                    drawGame();
+                }
+            }
+            
+            // Initialize game
+            function initGame() {
+                // Set initial snake position (3 segments)
+                const startX = Math.floor(canvas.width / gridSize / 4) * gridSize;
+                const startY = Math.floor(canvas.height / gridSize / 2) * gridSize;
+                
+                snake = [
+                    {x: startX, y: startY},
+                    {x: startX - gridSize, y: startY},
+                    {x: startX - gridSize * 2, y: startY}
+                ];
+                
+                direction = 'right';
+                nextDirection = 'right';
+                score = 0;
+                gameSpeed = initialSpeed;
+                scoreElement.textContent = score;
+                bestScoreElement.textContent = bestScore;
+                
+                generateFood();
+            }
+            
+            // Generate food at random position
+            function generateFood() {
+                const maxX = Math.floor(canvas.width / gridSize) - 1;
+                const maxY = Math.floor(canvas.height / gridSize) - 1;
+                
+                food = {
+                    x: Math.floor(Math.random() * maxX) * gridSize,
+                    y: Math.floor(Math.random() * maxY) * gridSize
+                };
+                
+                // Make sure food doesn't appear on snake
+                for (let segment of snake) {
+                    if (segment.x === food.x && segment.y === food.y) {
+                        return generateFood();
+                    }
+                }
+            }
+            
+            // Main game loop
+            function gameLoop() {
+                // Move snake
+                const head = {x: snake[0].x, y: snake[0].y};
+                
+                switch (direction) {
+                    case 'up':
+                        head.y -= gridSize;
+                        break;
+                    case 'down':
+                        head.y += gridSize;
+                        break;
+                    case 'left':
+                        head.x -= gridSize;
+                        break;
+                    case 'right':
+                        head.x += gridSize;
+                        break;
+                }
+                
+                // Check for collisions
+                if (
+                    head.x < 0 || head.x >= canvas.width ||
+                    head.y < 0 || head.y >= canvas.height ||
+                    snake.some(segment => segment.x === head.x && segment.y === head.y)
+                ) {
+                    gameOver();
+                    return;
+                }
+                
+                // Add new head
+                snake.unshift(head);
+                
+                // Check if snake ate food
+                if (head.x === food.x && head.y === food.y) {
+                    // Play sound
+                    if (isSoundOn) {
+                        eatSound.currentTime = 0;
+                        eatSound.play();
+                    }
+                    
+                    // Increase score
+                    score += 10;
+                    scoreElement.textContent = score;
+                    
+                    // Increase speed (up to a maximum)
+                    if (gameSpeed > maxSpeed) {
+                        gameSpeed -= speedIncrease;
+                        clearInterval(gameInterval);
+                        gameInterval = setInterval(gameLoop, gameSpeed);
+                    }
+                    
+                    // Generate new food
+                    generateFood();
+                } else {
+                    // Remove tail if no food was eaten
+                    snake.pop();
+                }
+                
+                // Update direction for next move
+                direction = nextDirection;
+                
+                // Draw game
+                drawGame();
+            }
+            
+            // Draw game elements
+            function drawGame() {
+                // Clear canvas
+                ctx.fillStyle = '#0a0a15';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw grid (only in non-focus mode)
+                if (!isFocusMode) {
+                    ctx.strokeStyle = 'rgba(50, 50, 80, 0.3)';
+                    ctx.lineWidth = 0.5;
+                    
+                    // Vertical lines
+                    for (let x = 0; x < canvas.width; x += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, canvas.height);
+                        ctx.stroke();
+                    }
+                    
+                    // Horizontal lines
+                    for (let y = 0; y < canvas.height; y += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(canvas.width, y);
+                        ctx.stroke();
+                    }
+                }
+                
+                // Draw food
+                ctx.fillStyle = '#ff4d9d';
+                ctx.beginPath();
+                ctx.arc(food.x + gridSize/2, food.y + gridSize/2, gridSize/2 - 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add glow effect to food
+                ctx.shadowColor = '#ff4d9d';
+                ctx.shadowBlur = 15;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                // Draw snake
+                for (let i = 0; i < snake.length; i++) {
+                    const segment = snake[i];
+                    
+                    // Head is brighter
+                    if (i === 0) {
+                        ctx.fillStyle = '#4dff9d';
+                    } else {
+                        // Body gets slightly darker
+                        const intensity = Math.max(50, 255 - (i * 5));
+                        ctx.fillStyle = `rgb(77, ${intensity}, ${intensity + 50})`;
+                    }
+                    
+                    ctx.fillRect(segment.x + 2, segment.y + 2, gridSize - 4, gridSize - 4);
+                    
+                    // Add glow effect to head
+                    if (i === 0) {
+                        ctx.shadowColor = '#4dff9d';
+                        ctx.shadowBlur = 10;
+                        ctx.fillRect(segment.x + 2, segment.y + 2, gridSize - 4, gridSize - 4);
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+            
+            // Game over
+            function gameOver() {
+                clearInterval(gameInterval);
+                isPlaying = false;
+                
+                // Play sound
+                if (isSoundOn) {
+                    gameOverSound.currentTime = 0;
+                    gameOverSound.play();
+                }
+                
+                // Update best score
+                if (score > bestScore) {
+                    bestScore = score;
+                    localStorage.setItem('bestScore', bestScore);
+                }
+                
+                // Show game over screen
+                finalScoreElement.textContent = score;
+                finalBestScoreElement.textContent = bestScore;
+                gameOverScreen.classList.remove('hidden');
+                gameOverScreen.classList.add('flex');
+            }
+            
+            // Start game
+            function startGame() {
+                startScreen.classList.add('hidden');
+                startScreen.classList.remove('flex');
+                gameOverScreen.classList.add('hidden');
+                gameOverScreen.classList.remove('flex');
+                
+                initGame();
+                drawGame();
+                
+                isPlaying = true;
+                gameInterval = setInterval(gameLoop, gameSpeed);
+            }
+            
+            // Event listeners
+            startBtn.addEventListener('click', startGame);
+            restartBtn.addEventListener('click', startGame);
+            
+            soundBtn.addEventListener('click', () => {
+                isSoundOn = !isSoundOn;
+                soundBtn.innerHTML = isSoundOn ? 
+                    `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M12 6a7.975 7.975 0 015.657 2.343m0 0a7.975 7.975 0 010 11.314m-11.314 0a7.975 7.975 0 010-11.314m0 0a7.975 7.975 0 015.657-2.343" />
+                    </svg>` :
+                    `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                    </svg>`;
+            });
+            
+            focusBtn.addEventListener('click', () => {
+                isFocusMode = !isFocusMode;
+                focusBtn.innerHTML = isFocusMode ? 
+                    `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>` :
+                    `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>`;
+                
+                if (isPlaying) {
+                    drawGame();
+                }
+            });
+            
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (!isPlaying) return;
+                
+                switch (e.key) {
+                    case 'ArrowUp':
+                    case 'w':
+                    case 'W':
+                        if (direction !== 'down') nextDirection = 'up';
+                        break;
+                    case 'ArrowDown':
+                    case 's':
+                    case 'S':
+                        if (direction !== 'up') nextDirection = 'down';
+                        break;
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        if (direction !== 'right') nextDirection = 'left';
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        if (direction !== 'left') nextDirection = 'right';
+                        break;
+                    case ' ':
+                        // Pause game
+                        if (isPlaying) {
+                            clearInterval(gameInterval);
+                            isPlaying = false;
+                        } else {
+                            gameInterval = setInterval(gameLoop, gameSpeed);
+                            isPlaying = true;
+                        }
+                        break;
+                }
+            });
+            
+            // Mobile controls
+            upBtn.addEventListener('click', () => { if (direction !== 'down') nextDirection = 'up'; });
+            downBtn.addEventListener('click', () => { if (direction !== 'up') nextDirection = 'down'; });
+            leftBtn.addEventListener('click', () => { if (direction !== 'right') nextDirection = 'left'; });
+            rightBtn.addEventListener('click', () => { if (direction !== 'left') nextDirection = 'right'; });
+            
+            // Initialize
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Speed level change function
+            function setSpeedLevel(level) {
+                currentSpeedLevel = level;
+                initialSpeed = speedLevels[level].initial;
+                speedIncrease = speedLevels[level].increase;
+                maxSpeed = speedLevels[level].max;
+                
+                // Update button styles
+                easyBtn.classList.remove('border-green-400');
+                mediumBtn.classList.remove('border-yellow-400');
+                hardBtn.classList.remove('border-red-400');
+                
+                if (level === 'easy') {
+                    easyBtn.classList.add('border-green-400');
+                } else if (level === 'medium') {
+                    mediumBtn.classList.add('border-yellow-400');
+                } else {
+                    hardBtn.classList.add('border-red-400');
+                }
+                
+                // Update game speed if playing
+                if (isPlaying) {
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(gameLoop, gameSpeed);
+                }
+            }
+
+            // Speed level event listeners
+            easyBtn.addEventListener('click', () => setSpeedLevel('easy'));
+            mediumBtn.addEventListener('click', () => setSpeedLevel('medium'));
+            hardBtn.addEventListener('click', () => setSpeedLevel('hard'));
+
+            // Set best score and default speed level
+            bestScoreElement.textContent = bestScore;
+            setSpeedLevel('medium');
+        });
+    </script>
+</body>
+</html>
